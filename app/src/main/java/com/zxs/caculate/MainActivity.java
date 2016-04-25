@@ -1,19 +1,23 @@
 package com.zxs.caculate;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -21,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     TextView textView ;
     TextView stateText;
     TextView scoreText;
+    long time;
     private Handler handler = new Handler(){
         @Override
         public void handleMessage(Message msg) {
@@ -28,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
             switch (msg.what){
                 case 0:
                     textView.setText(data);
+                    Toast.makeText(MainActivity.this,"总耗时"+time+"ms",Toast.LENGTH_SHORT).show();
                     break;
                 case 1:
                     stateText.setText("开始计算");
@@ -36,7 +42,9 @@ public class MainActivity extends AppCompatActivity {
                     scoreText.setText("最后得分"+msg.getData().getString("score"));
                     break;
                 case 3:
-                    stateText.setText("第"+msg.arg1+"次数运算");
+                    stateText.setText("第"+msg.getData().getLong("time")+"次数运算");
+                    break;
+                case 4:
                     break;
             }
 
@@ -53,9 +61,14 @@ public class MainActivity extends AppCompatActivity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                textView.setText("");
+                data = "";
                 new MyThread().start();
             }
         });
+        if(Build.VERSION.SDK_INT >=23){
+            requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE},100);
+        }
     }
 
     private class MyThread extends Thread{
@@ -83,7 +96,9 @@ public class MainActivity extends AppCompatActivity {
                 isr.close();
                 fis.close();
             }catch (Exception e){
+                Log.v("zxs","error"+e.toString());
             }
+
             int data[][] = new int[dataList.size()][dataList.get(0).length()];
             for(int i =0;i<dataList.size();i++){
                 char[] datas = dataList.get(i).replace(" ","").toCharArray();
@@ -92,7 +107,10 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
             Calculate calculate = new Calculate(data,handler,0,MainActivity.this);
+            Calendar calendar = Calendar.getInstance();
             calculate.start();
+            Calendar endCalendar = Calendar.getInstance();
+            time = endCalendar.getTimeInMillis() - calendar.getTimeInMillis();
             handler.sendEmptyMessage(0);
         }
     }

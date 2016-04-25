@@ -1,6 +1,5 @@
 package com.zxs.caculate;
 
-import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -9,91 +8,84 @@ import java.util.ArrayList;
 
 /**
  * Created by zxs on 16/4/25.
+ * 每一层的运算
  */
-public class Calculate {
-
-    private int[][] data;
-    private Handler hadler;
-    int score;
-    private Context context;
-    public static long calculateNum = 0;
-    int lastPointX =-1;
-    int lastPointY = -1;
-    int doubleTime = 0;
-    private final int floor = 2;
+public class CalculateFloor {
+    private int data[][];
+    private int score;
+    private int floor;
+    //上一次触摸点,二维数组，表示上一次点击的次数 x,y
+    private int[] lastPoint;
+    //连续点击次数
+    private int doubleTime;
+    private Handler handler;
+    private ArrayList<int[]> clickPoints;
     private ArrayList<Integer> selectedData;
-    public Calculate(int [][] data,Handler handler,int score,Context context){
-        this.context = context;
+    public CalculateFloor(int data[][], int score, int floor, int lastPoint[], int doubleTime, ArrayList<int[]> clickPoints,Handler handler){
         this.data = data;
-        this.hadler = handler;
         this.score = score;
+        this.floor = floor;
+        this.lastPoint = lastPoint;
+        this.doubleTime = doubleTime;
+        this.clickPoints = clickPoints;
+        this.handler = handler;
         selectedData = new ArrayList<Integer>();
     }
-    public void start(){
 
-        int maxScore = 0;
-        int x = -1,y = -1;
-        ArrayList<int[]> clearPoint = new ArrayList<int[]>();
+    /**
+     * 返回从当前层数往下到最后一层中计算的最大分数
+     * */
+    public int calculate(){
+        if(floor <= 0){
+            return score;
+        }
+        int maxData = score;
         for(int i=0;i<16;i++){
             for(int j=0;j<25;j++){
                 if(data[i][j] == 0){
-                    int floorTime = floor;
+                    Message timeMessage = new Message();
+                    timeMessage.what = 3;
+                    Bundle bundle = new Bundle();
+                    Calculate.calculateNum = Calculate.calculateNum+1;
+                    bundle.putLong("time",Calculate.calculateNum);
+                    handler.sendMessage(timeMessage);
+
+                    int floorNum = score;
                     int num = getScore(i,j);
-                    ArrayList<int[]> clickPoints = new ArrayList<int[]>();
                     if(num > 0){
-                        y = j;
-                        x = i;
-                        if(lastPointX == -1){
-                            lastPointX = i;
-                            lastPointY = j;
-                            doubleTime = 1;
-                        }else if(lastPointX != i || lastPointY != j){
-                            lastPointX = -1;
-                            lastPointY = -1;
+                        //如果大于0，表示这次计算有数据，把数据传递进去进行，进行下一层运算
+                        if(lastPoint[0] == i && lastPoint[1] == j){
+                            doubleTime = doubleTime +1;
+                        }else{
+                            lastPoint[0] = -1;
+                            lastPoint[1] = -1;
                             doubleTime = 0;
                         }
-
+                        num = num +score;
+                        ArrayList<int[]> pointList = new ArrayList<int[]>();
+                        pointList.add(new int[]{i,j});
+                        if(floor == 1 && !hasNexPoint(pointList)){
+                            return num;
+                        }
                         int clickP[] = new int[]{i,j};
                         clickPoints.add(clickP);
-                        int lastF = floorTime-1;
-                        int nextData[][] = clearPoint(i,j,copyData(data));
-                        CalculateFloor calculateFloor = new CalculateFloor(nextData,num,lastF,clickP,doubleTime,clickPoints,hadler);
-                        num = calculateFloor.calculate();
+                        int lastF = floor-1;
+                        if(lastF > 0){
+                            getScore(i,j);
+                            int nextData[][] = clearPoint(i,j,copyData(data));
+                            CalculateFloor calculateFloor = new CalculateFloor(nextData,num,lastF,lastPoint,doubleTime,clickPoints,handler);
+                            floorNum = floorNum+ calculateFloor.calculate();
+                        }
                     }
-                   if(num >= maxScore || (num == 0 && maxScore ==0)){
-
-                       maxScore = num;
-                       clearPoint = clickPoints;
-                   }
+                    if(floorNum > maxData){
+                        maxData = floorNum;
+                    }
                 }
             }
         }
-        if(maxScore != 0 || hasNexPoint(clearPoint)){
-            int clearNum = clearPoint.size();
-            for(int i =0;i<clearNum;i++){
-                getScore(clearPoint.get(i)[0],clearPoint.get(i)[1]);
-                data = clearPoint(clearPoint.get(i)[0],clearPoint.get(i)[1],data);
-            }
-            score = score + maxScore;
-            start();
-        }
-        Bundle bundle = new Bundle();
-        bundle.putString("score",score+"");
-        Message message = new Message();
-        message.setData(bundle);
-        message.what = 2;
-        hadler.sendMessage(message);
+        return maxData;
     }
 
-    private int[][] copyData(int[][] data){
-        int copyData[][] = new int[16][25];
-        for(int i =0;i<16;i++){
-            for(int j=0;j<25;j++){
-                copyData[i][j] = data[i][j];
-            }
-        }
-        return copyData;
-    }
     /**
      * 是否还有下一个可点击的点，从左到右，从上倒下
      * */
@@ -115,6 +107,15 @@ public class Calculate {
             }
         }
         return false;
+    }
+    private int[][] copyData(int[][] data){
+        int copyData[][] = new int[16][25];
+        for(int i =0;i<16;i++){
+            for(int j=0;j<25;j++){
+                copyData[i][j] = data[i][j];
+            }
+        }
+        return copyData;
     }
 
     /**
@@ -172,7 +173,7 @@ public class Calculate {
                 }
             }
         }
-        if(num>0 && lastPointX == y && lastPointY == x && doubleTime > 0){
+        if(num>0 && lastPoint[1] == y && lastPoint[0] == x && doubleTime > 0){
             num = num +doubleTime;
             doubleTime = doubleTime +1;
         }
@@ -238,6 +239,4 @@ public class Calculate {
 
         return data;
     }
-
-
 }
