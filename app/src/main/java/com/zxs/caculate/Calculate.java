@@ -1,9 +1,8 @@
 package com.zxs.caculate;
 
 import android.content.Context;
-import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
+import android.util.Log;
 
 import java.util.ArrayList;
 
@@ -19,8 +18,9 @@ public class Calculate {
     public static long calculateNum = 0;
     int lastPointX =-1;
     int lastPointY = -1;
+    private int finalLastX = -1,finalLastY = -1;
     int doubleTime = 0;
-    private final int floor = 2;
+    private final int floor = 4;
     private ArrayList<Integer> selectedData;
     public Calculate(int [][] data,Handler handler,int score,Context context){
         this.context = context;
@@ -32,21 +32,21 @@ public class Calculate {
     public void start(){
 
         int maxScore = 0;
-        int x = -1,y = -1;
         ArrayList<int[]> clearPoint = new ArrayList<int[]>();
+        lastPointX = finalLastX;
+        lastPointY = finalLastY;
         for(int i=0;i<16;i++){
             for(int j=0;j<25;j++){
                 if(data[i][j] == 0){
+                    Log.v("zxs","计算起始点   "+i+"   "+j+"  得分"+score);
                     int floorTime = floor;
                     int num = getScore(i,j);
                     ArrayList<int[]> clickPoints = new ArrayList<int[]>();
                     if(num > 0){
-                        y = j;
-                        x = i;
                         if(lastPointX == -1){
                             lastPointX = i;
                             lastPointY = j;
-                            doubleTime = 1;
+                            doubleTime = 2;
                         }else if(lastPointX != i || lastPointY != j){
                             lastPointX = -1;
                             lastPointY = -1;
@@ -61,7 +61,6 @@ public class Calculate {
                         num = calculateFloor.calculate();
                     }
                    if(num >= maxScore || (num == 0 && maxScore ==0)){
-
                        maxScore = num;
                        clearPoint = clickPoints;
                    }
@@ -71,18 +70,19 @@ public class Calculate {
         if(maxScore != 0 || hasNexPoint(clearPoint)){
             int clearNum = clearPoint.size();
             for(int i =0;i<clearNum;i++){
+
                 getScore(clearPoint.get(i)[0],clearPoint.get(i)[1]);
                 data = clearPoint(clearPoint.get(i)[0],clearPoint.get(i)[1],data);
             }
             score = score + maxScore;
             start();
         }
-        Bundle bundle = new Bundle();
-        bundle.putString("score",score+"");
-        Message message = new Message();
-        message.setData(bundle);
-        message.what = 2;
-        hadler.sendMessage(message);
+//        Bundle bundle = new Bundle();
+//        bundle.putString("score",score+"");
+//        Message message = new Message();
+//        message.setData(bundle);
+//        message.what = 2;
+//        hadler.sendMessage(message);
     }
 
     private int[][] copyData(int[][] data){
@@ -140,6 +140,12 @@ public class Calculate {
         }
         //right
         for(int i = x+1;i<25;i++){
+            if(i == -1){
+                Log.v("zxs","i == -1");
+            }
+            if(y == -1){
+                Log.v("zxs","y == -1");
+            }
             if(data[y][i] != 0){
                 point[2] = data[y][i];
                 break;
@@ -174,7 +180,7 @@ public class Calculate {
         }
         if(num>0 && lastPointX == y && lastPointY == x && doubleTime > 0){
             num = num +doubleTime;
-            doubleTime = doubleTime +1;
+            doubleTime = doubleTime + 1;
         }
         return num;
     }
@@ -183,7 +189,6 @@ public class Calculate {
      * 清除点击某个点后的数据
      */
     private int[][] clearPoint(int y,int x,int[][] data){
-        int num = selectedData.size();
         for(int k = 0;k<selectedData.size();k++){
             int select = selectedData.get(k);
             //left

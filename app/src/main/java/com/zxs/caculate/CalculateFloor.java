@@ -1,8 +1,6 @@
 package com.zxs.caculate;
 
-import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
 
 import java.util.ArrayList;
 
@@ -17,19 +15,24 @@ public class CalculateFloor {
     //上一次触摸点,二维数组，表示上一次点击的次数 x,y
     private int[] lastPoint;
     //连续点击次数
-    private int doubleTime;
+    private int doubleScore,beginDoubleScore;
     private Handler handler;
     private ArrayList<int[]> clickPoints;
     private ArrayList<Integer> selectedData;
+    private int beginClickPointsNum;
     public CalculateFloor(int data[][], int score, int floor, int lastPoint[], int doubleTime, ArrayList<int[]> clickPoints,Handler handler){
         this.data = data;
         this.score = score;
         this.floor = floor;
-        this.lastPoint = lastPoint;
-        this.doubleTime = doubleTime;
+        this.lastPoint = new int[2];
+        this.lastPoint[0] = lastPoint[0];
+        this.lastPoint[1] = lastPoint[1];
+        this.doubleScore = doubleTime;
+        this.beginDoubleScore = doubleTime;
         this.clickPoints = clickPoints;
         this.handler = handler;
         selectedData = new ArrayList<Integer>();
+        beginClickPointsNum = clickPoints.size();
     }
 
     /**
@@ -43,43 +46,45 @@ public class CalculateFloor {
         for(int i=0;i<16;i++){
             for(int j=0;j<25;j++){
                 if(data[i][j] == 0){
-                    Message timeMessage = new Message();
-                    timeMessage.what = 3;
-                    Bundle bundle = new Bundle();
-                    Calculate.calculateNum = Calculate.calculateNum+1;
-                    bundle.putLong("time",Calculate.calculateNum);
-                    handler.sendMessage(timeMessage);
-
+                    doubleScore = beginDoubleScore;
                     int floorNum = score;
                     int num = getScore(i,j);
                     if(num > 0){
                         //如果大于0，表示这次计算有数据，把数据传递进去进行，进行下一层运算
                         if(lastPoint[0] == i && lastPoint[1] == j){
-                            doubleTime = doubleTime +1;
+                            doubleScore = doubleScore + 1;
                         }else{
                             lastPoint[0] = -1;
                             lastPoint[1] = -1;
-                            doubleTime = 0;
+                            doubleScore = 0;
                         }
-                        num = num +score;
-                        ArrayList<int[]> pointList = new ArrayList<int[]>();
-                        pointList.add(new int[]{i,j});
-                        if(floor == 1 && !hasNexPoint(pointList)){
-                            return num;
-                        }
+                        floorNum = floorNum + num;
+//                        if(floor == 1 && !hasNexPoint(pointList)){
+//                            return num;
+//                        }
+
                         int clickP[] = new int[]{i,j};
-                        clickPoints.add(clickP);
+                        ArrayList<int[]> pointList = new ArrayList<int[]>();
+                        pointList.add(clickP);
                         int lastF = floor-1;
                         if(lastF > 0){
                             getScore(i,j);
                             int nextData[][] = clearPoint(i,j,copyData(data));
-                            CalculateFloor calculateFloor = new CalculateFloor(nextData,num,lastF,lastPoint,doubleTime,clickPoints,handler);
-                            floorNum = floorNum+ calculateFloor.calculate();
+                            CalculateFloor calculateFloor = new CalculateFloor(nextData,floorNum,lastF,lastPoint,doubleScore,pointList,handler);
+                            floorNum =  calculateFloor.calculate();
+                        }
+
+                        if(floorNum > maxData){
+                            maxData = floorNum;
+                            if(clickPoints.size() > beginClickPointsNum){
+                                for(int clear = clickPoints.size()-1;clear >= beginClickPointsNum;clear--){
+                                    clickPoints.remove(clear);
+                                }
+                            }
+                            clickPoints.addAll(pointList);
                         }
                     }
-                    if(floorNum > maxData){
-                        maxData = floorNum;
-                    }
+
                 }
             }
         }
@@ -173,9 +178,8 @@ public class CalculateFloor {
                 }
             }
         }
-        if(num>0 && lastPoint[1] == y && lastPoint[0] == x && doubleTime > 0){
-            num = num +doubleTime;
-            doubleTime = doubleTime +1;
+        if(num>0 && lastPoint[1] == y && lastPoint[0] == x && doubleScore > 0){
+            num = num +doubleScore;
         }
         return num;
     }
